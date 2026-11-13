@@ -84,9 +84,9 @@ def salud():
 
     }
 
-@app.get("/api/status")
+@app.get("/api/estado")
 
-def api_status():
+def api_estado():
 
     return {
 
@@ -112,13 +112,13 @@ def api_status():
 
     }
 
-@app.post("/api/tasks")
+@app.post("/api/tareas")
 
 def crear_tarea(tarea: Tarea):
 
     return {
 
-        "message": "Tarea recibida. El almacenamiento se incorporará posteriormente.",
+        "mensaje": "Tarea recibida. El almacenamiento se incorporará posteriormente.",
 
         "tarea": tarea.model_dump()
 
