@@ -1,4 +1,6 @@
-ni from datetime import datetime, timezone
+
+
+from datetime import datetime, timezone
 
 from typing import Optional
 
@@ -18,15 +20,15 @@ app = FastAPI(
 
 )
 
-class Task(BaseModel):
+class Tarea(BaseModel):
 
-    title: str = Field(..., min_length=1, max_length=200)
+    titulo: str = Field(..., min_length=1, max_length=200)
 
-    description: Optional[str] = None
+    descripcion: Optional[str] = None
 
-    priority: str = "normal"
+    prioridad: str = "normal"
 
-    status: str = "pending"
+    estado: str = "pendiente"
 
 @app.get("/", response_class=HTMLResponse)
 
@@ -70,13 +72,13 @@ def home():
 
 @app.get("/health")
 
-def health():
+def salud():
 
     return {
 
-        "status": "ok",
+        "estado": "ok",
 
-        "service": "R2-AI-Executive",
+        "servicio": "R2-AI-Executive",
 
         "timestamp": datetime.now(timezone.utc).isoformat()
 
@@ -88,36 +90,36 @@ def api_status():
 
     return {
 
-        "name": "R2-AI-Executive",
+        "nombre": "R2-AI-Executive",
 
-        "description": "Sistema de Dirección Ejecutiva del Grupo R2",
+        "descripcion": "Sistema de Dirección Ejecutiva del Grupo R2",
 
         "version": app.version,
 
-        "modules": [
+        "modulos": [
 
             "executive_dashboard",
 
-            "projects",
+            "proyectos",
 
-            "tasks",
+            "tareas",
 
-            "approvals"
+            "aprobaciones"
 
         ],
 
-        "status": "initial"
+        "estado": "inicial"
 
     }
 
 @app.post("/api/tasks")
 
-def create_task(task: Task):
+def crear_tarea(tarea: Tarea):
 
     return {
 
         "message": "Tarea recibida. El almacenamiento se incorporará posteriormente.",
 
-        "task": task.model_dump()
+        "tarea": tarea.model_dump()
 
     }
