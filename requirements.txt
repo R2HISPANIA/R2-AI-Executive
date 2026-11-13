@@ -1,13 +1,5 @@
-<html>
-<head>
-<meta charset="UTF-8">
-</head>
-<body>
+fastapi
 
+uvicorn
 
-<p class="p2">fastapi&gt;=0.115,&lt;1.0</p>
-<p class="p2">uvicorn[standard]&gt;=0.30,&lt;1.0</p>
-<p class="p2">pydantic&gt;=2.8,&lt;3.0</p>
-
-</body>
-</html>
+pydantic
