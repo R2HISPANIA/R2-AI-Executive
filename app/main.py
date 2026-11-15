@@ -358,6 +358,8 @@ def crear_tarea(tarea: Tarea):
 
     }
 
+
+
 @app.post("/api/chat")
 
 def conversar(solicitud: SolicitudChat):
@@ -402,33 +404,85 @@ def conversar(solicitud: SolicitudChat):
 
     )
 
+    client = genai.Client(api_key=api_key)
+
+    modelos = [
+
+        "gemini-3.5-flash-lite",
+
+        "gemini-3.8-flash"
+
+    ]
+
+    ultimo_error = None
+
     try:
 
-        client = genai.Client(api_key=api_key)
+        for modelo in modelos:
 
-        respuesta = client.models.generate_content(
+            try:
 
-            model="gemini-3.8-flash",
+                respuesta = client.models.generate_content(
 
-            contents=contenidos,
+                    model=modelo,
 
-            config=types.GenerateContentConfig(
+                    contents=contenidos,
 
-                system_instruction=INSTRUCCIONES_R2,
+                    config=types.GenerateContentConfig(
 
-                temperature=0.4,
+                        system_instruction=INSTRUCCIONES_R2,
 
-                max_output_tokens=1500
+                        temperature=0.4,
 
-            )
+                        max_output_tokens=1500
+
+                    )
+
+                )
+
+                texto = respuesta.text
+
+                if not texto:
+
+                    raise HTTPException(
+
+                        status_code=502,
+
+                        detail="Gemini no devolvió una respuesta."
+
+                    )
+
+                return {
+
+                    "estado": "ok",
+
+                    "modelo": modelo,
+
+                    "respuesta": texto
+
+                }
+
+            except Exception as error:
+
+                ultimo_error = error
+
+                codigo = getattr(error, "code", None)
+
+                if codigo not in (404, 429, 500, 502, 503, 504):
+
+                    raise
+
+        raise HTTPException(
+
+            status_code=503,
+
+            detail="Los dos modelos de Gemini están temporalmente indisponibles. Intenta más tarde."
 
         )
 
-        texto = respuesta.text or "No se recibió una respuesta de Gemini."
+    except HTTPException:
 
-        client.close()
-
-        return {"estado": "ok", "respuesta": texto}
+        raise
 
     except Exception as error:
 
@@ -436,7 +490,10 @@ def conversar(solicitud: SolicitudChat):
 
             status_code=502,
 
-            detail="No se pudo obtener respuesta de Gemini: " + str(error)
+            detail="Error de comunicación con Gemini: " + str(error)
 
         )
 
+    finally:
+
+        client.close()
