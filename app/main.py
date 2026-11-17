@@ -448,43 +448,57 @@ const historial = [];
 
           try {
 
-            const respuesta = await fetch("/api/chat", {
+            
 
-              method: "POST",
+const respuesta = await fetch("/api/chat", {
 
-              headers: {"Content-Type": "application/json"},
+    method: "POST",
 
-              body: JSON.stringify({
+    headers: {
 
-    mensaje: mensaje,
+        "Content-Type": "application/json",
 
-    usuario_id: usuarioId,
+        "Accept": "application/json"
 
-    historial: historial
+    },
 
-})
+    body: JSON.stringify({
 
-              })
+        mensaje: mensaje,
 
-            });
+        usuario_id: usuarioId,
 
-            const datos = await respuesta.json();
+        historial: historial
 
-            if (!respuesta.ok) {
+    })
 
-              throw new Error(datos.detail || "Error al consultar la IA");
+});
 
-            }
+const datos = await respuesta.json();
 
-            historial.push(
+if (!respuesta.ok) {
 
-              {rol: "user", contenido: mensaje},
+    throw new Error(
 
-              {rol: "model", contenido: datos.respuesta}
+        typeof datos.detail === "string"
 
-            );
+            ? datos.detail
 
-            chat.textContent += "\\n\\nR2 AI: " + datos.respuesta;
+            : JSON.stringify(datos.detail || datos)
+
+    );
+
+}
+
+historial.push(
+
+    {rol: "user", contenido: mensaje},
+
+    {rol: "model", contenido: datos.respuesta}
+
+);
+
+chat.textContent += "\n\nR2 AI: " + datos.respuesta;un
 
           } catch (error) {
 
