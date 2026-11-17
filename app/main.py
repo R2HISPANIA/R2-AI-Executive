@@ -498,7 +498,7 @@ historial.push(
 
 );
 
-chat.textContent += "\n\nR2 AI: " + datos.respuesta;
+chat.textContent += "\\n\\nR2 AI: " + datos.respuesta;
 
           } catch (error) {
 
