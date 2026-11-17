@@ -456,9 +456,13 @@ const historial = [];
 
               body: JSON.stringify({
 
-                mensaje: mensaje,
+    mensaje: mensaje,
 
-                historial: historial
+    usuario_id: usuarioId,
+
+    historial: historial
+
+})
 
               })
 
