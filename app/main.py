@@ -83,7 +83,39 @@ def inicializar_memoria():
                 ON conversaciones (usuario_id, fecha)
 
             """)
+            cursor.execute("""
 
+                CREATE TABLE IF NOT EXISTS memorias (
+
+                    id UUID PRIMARY KEY,
+
+                    usuario_id VARCHAR(100) NOT NULL,
+
+                    categoria VARCHAR(50) NOT NULL,
+
+                    titulo VARCHAR(200) NOT NULL,
+
+                    contenido TEXT NOT NULL,
+
+                    importancia INTEGER NOT NULL DEFAULT 3,
+
+                    fuente TEXT,
+
+                    fecha_creacion TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+                    fecha_actualizacion TIMESTAMPTZ NOT NULL DEFAULT NOW()
+
+                )
+
+            """)
+
+            cursor.execute("""
+
+                CREATE INDEX IF NOT EXISTS idx_memorias_usuario_categoria
+
+                ON memorias (usuario_id, categoria)
+
+            """)
         conexion.commit()
 
     finally:
