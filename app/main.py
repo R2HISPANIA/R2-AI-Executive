@@ -731,7 +731,123 @@ def guardar_memoria(usuario_id: str, mensajes: list):
 
         conexion.close()
 
-@app.post("/api/chat")
+def guardar_memoria_estructurada(
+
+    usuario_id: str,
+
+    categoria: str,
+
+    titulo: str,
+
+    contenido: str,
+
+    importancia: int = 3,
+
+    fuente: Optional[str] = None
+
+):
+
+    conexion = obtener_conexion()
+
+    try:
+
+        with conexion.cursor() as cursor:
+
+            cursor.execute("""
+
+                INSERT INTO memorias (
+
+                    id,
+
+                    usuario_id,
+
+                    categoria,
+
+                    titulo,
+
+                    contenido,
+
+                    importancia,
+
+                    fuente
+
+                )
+
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+
+            """, (
+
+                str(uuid.uuid4()),
+
+                usuario_id,
+
+                categoria,
+
+                titulo,
+
+                contenido,
+
+                importancia,
+
+                fuente
+
+            ))
+
+        conexion.commit()
+
+    finally:
+
+        conexion.close()
+
+def recuperar_memorias_estructuradas(
+
+    usuario_id: str,
+
+    limite: int = 20
+
+):
+
+    conexion = obtener_conexion()
+
+    try:
+
+        with conexion.cursor() as cursor:
+
+            cursor.execute("""
+
+                SELECT
+
+                    id,
+
+                    categoria,
+
+                    titulo,
+
+                    contenido,
+
+                    importancia,
+
+                    fuente,
+
+                    fecha_actualizacion
+
+                FROM memorias
+
+                WHERE usuario_id = %s
+
+                ORDER BY importancia DESC, fecha_actualizacion DESC
+
+                LIMIT %s
+
+            """, (usuario_id, limite))
+
+            memorias = cursor.fetchall()
+
+        return memorias
+
+    finally:
+
+        conexion.close()@app.post("/api/chat")
 
 def conversar(solicitud: SolicitudChat):
 
