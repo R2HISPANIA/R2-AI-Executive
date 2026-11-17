@@ -414,7 +414,17 @@ def home():
 
       <script>
 
-        const historial = [];
+        let usuarioId = localStorage.getItem("r2_usuario_id");
+
+if (!usuarioId) {
+
+    usuarioId = crypto.randomUUID();
+
+    localStorage.setItem("r2_usuario_id", usuarioId);
+
+}
+
+const historial = [];
 
         async function enviarMensaje() {
 
