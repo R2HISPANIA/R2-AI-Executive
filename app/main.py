@@ -575,7 +575,19 @@ def crear_tarea(tarea: Tarea):
     }
 
 
+def recuperar_memoria(...):
 
+    ...
+
+def guardar_memoria(...):
+
+    ...
+
+@app.post("/api/chat")
+
+def conversar(solicitud: SolicitudChat):
+
+    ...
 @app.post("/api/chat")
 
 def conversar(solicitud: SolicitudChat):
@@ -592,33 +604,49 @@ def conversar(solicitud: SolicitudChat):
 
         )
 
-    contenidos = []
+    historial_memoria = recuperar_memoria(
 
-    for item in solicitud.historial[-20:]:
+    solicitud.usuario_id,
 
-        contenidos.append(
+    limite=20
 
-            types.Content(
+)
 
-                role=item.rol,
+contenidos = []
 
-                parts=[types.Part.from_text(text=item.contenido)]
-
-            )
-
-        )
+for item in historial_memoria:
 
     contenidos.append(
 
         types.Content(
 
-            role="user",
+            role=item["rol"],
 
-            parts=[types.Part.from_text(text=solicitud.mensaje)]
+            parts=[
+
+                types.Part.from_text(text=item["contenido"])
+
+            ]
 
         )
 
     )
+
+contenidos.append(
+
+    types.Content(
+
+        role="user",
+
+        parts=[
+
+            types.Part.from_text(text=solicitud.mensaje)
+
+        ]
+
+    )
+
+)
 
     client = genai.Client(api_key=api_key)
 
@@ -667,7 +695,31 @@ def conversar(solicitud: SolicitudChat):
                         detail="Gemini no devolvió una respuesta."
 
                     )
+guardar_memoria(
 
+    solicitud.usuario_id,
+
+    [
+
+        {
+
+            "rol": "user",
+
+            "contenido": solicitud.mensaje
+
+        },
+
+        {
+
+            "rol": "model",
+
+            "contenido": texto
+
+        }
+
+    ]
+
+)
                 return {
 
                     "estado": "ok",
