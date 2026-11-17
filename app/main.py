@@ -94,7 +94,15 @@ def inicializar_memoria():
 
 def iniciar_sistema():
 
-    inicializar_memoria()
+    try:
+
+        inicializar_memoria()
+
+        print("Memoria PostgreSQL inicializada correctamente.")
+
+    except Exception as error:
+
+        print("Advertencia: no se pudo inicializar la memoria:", error)
 
 
 
