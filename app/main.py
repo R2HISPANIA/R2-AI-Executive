@@ -641,7 +641,7 @@ def guardar_memoria(usuario_id: str, mensajes: list):
 
                 """, (
 
-                    uuid.uuid4(),
+                    str(uuid.uuid4()),
 
                     usuario_id,
 
