@@ -32,6 +32,70 @@ app = FastAPI(
 
 )
 
+def obtener_conexion():
+
+    database_url = os.environ.get("DATABASE_URL")
+
+    if not database_url:
+
+        raise RuntimeError("DATABASE_URL no está configurada")
+
+    return psycopg2.connect(
+
+        database_url,
+
+        cursor_factory=RealDictCursor,
+
+        connect_timeout=10
+
+    )
+
+def inicializar_memoria():
+
+    conexion = obtener_conexion()
+
+    try:
+
+        with conexion.cursor() as cursor:
+
+            cursor.execute("""
+
+                CREATE TABLE IF NOT EXISTS conversaciones (
+
+                    id UUID PRIMARY KEY,
+
+                    usuario_id VARCHAR(100) NOT NULL,
+
+                    rol VARCHAR(20) NOT NULL,
+
+                    contenido TEXT NOT NULL,
+
+                    fecha TIMESTAMPTZ NOT NULL DEFAULT NOW()
+
+                )
+
+            """)
+
+            cursor.execute("""
+
+                CREATE INDEX IF NOT EXISTS idx_conversaciones_usuario_fecha
+
+                ON conversaciones (usuario_id, fecha)
+
+            """)
+
+        conexion.commit()
+
+    finally:
+
+        conexion.close()
+
+@app.on_event("startup")
+
+def iniciar_sistema():
+
+    inicializar_memoria()
+
 
 
 INSTRUCCIONES_R2 = """
