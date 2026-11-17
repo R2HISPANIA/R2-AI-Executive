@@ -575,19 +575,74 @@ def crear_tarea(tarea: Tarea):
     }
 
 
-def recuperar_memoria(...):
 
-    ...
 
-def guardar_memoria(...):
+def recuperar_memoria(usuario_id: str, limite: int = 20):
 
-    ...
+    conexion = obtener_conexion()
 
-@app.post("/api/chat")
+    try:
 
-def conversar(solicitud: SolicitudChat):
+        with conexion.cursor() as cursor:
 
-    ...
+            cursor.execute("""
+
+                SELECT rol, contenido
+
+                FROM conversaciones
+
+                WHERE usuario_id = %s
+
+                ORDER BY fecha DESC
+
+                LIMIT %s
+
+            """, (usuario_id, limite))
+
+            mensajes = cursor.fetchall()
+
+        return list(reversed(mensajes))
+
+    finally:
+
+        conexion.close()
+
+def guardar_memoria(usuario_id: str, mensajes: list):
+
+    conexion = obtener_conexion()
+
+    try:
+
+        with conexion.cursor() as cursor:
+
+            for mensaje in mensajes:
+
+                cursor.execute("""
+
+                    INSERT INTO conversaciones
+
+                    (id, usuario_id, rol, contenido)
+
+                    VALUES (%s, %s, %s, %s)
+
+                """, (
+
+                    uuid.uuid4(),
+
+                    usuario_id,
+
+                    mensaje["rol"],
+
+                    mensaje["contenido"]
+
+                ))
+
+        conexion.commit()
+
+    finally:
+
+        conexion.close()
+
 @app.post("/api/chat")
 
 def conversar(solicitud: SolicitudChat):
@@ -606,47 +661,47 @@ def conversar(solicitud: SolicitudChat):
 
     historial_memoria = recuperar_memoria(
 
-    solicitud.usuario_id,
+        solicitud.usuario_id,
 
-    limite=20
+        limite=20
 
-)
+    )
 
-contenidos = []
+    contenidos = []
 
-for item in historial_memoria:
+    for item in historial_memoria:
+
+        contenidos.append(
+
+            types.Content(
+
+                role=item["rol"],
+
+                parts=[
+
+                    types.Part.from_text(text=item["contenido"])
+
+                ]
+
+            )
+
+        )
 
     contenidos.append(
 
         types.Content(
 
-            role=item["rol"],
+            role="user",
 
             parts=[
 
-                types.Part.from_text(text=item["contenido"])
+                types.Part.from_text(text=solicitud.mensaje)
 
             ]
 
         )
 
     )
-
-contenidos.append(
-
-    types.Content(
-
-        role="user",
-
-        parts=[
-
-            types.Part.from_text(text=solicitud.mensaje)
-
-        ]
-
-    )
-
-)
 
     client = genai.Client(api_key=api_key)
 
@@ -657,8 +712,6 @@ contenidos.append(
         "gemini-3.8-flash"
 
     ]
-
-    ultimo_error = None
 
     try:
 
@@ -695,31 +748,33 @@ contenidos.append(
                         detail="Gemini no devolvió una respuesta."
 
                     )
-guardar_memoria(
 
-    solicitud.usuario_id,
+                guardar_memoria(
 
-    [
+                    solicitud.usuario_id,
 
-        {
+                    [
 
-            "rol": "user",
+                        {
 
-            "contenido": solicitud.mensaje
+                            "rol": "user",
 
-        },
+                            "contenido": solicitud.mensaje
 
-        {
+                        },
 
-            "rol": "model",
+                        {
 
-            "contenido": texto
+                            "rol": "model",
 
-        }
+                            "contenido": texto
 
-    ]
+                        }
 
-)
+                    ]
+
+                )
+
                 return {
 
                     "estado": "ok",
@@ -732,8 +787,6 @@ guardar_memoria(
 
             except Exception as error:
 
-                ultimo_error = error
-
                 codigo = getattr(error, "code", None)
 
                 if codigo not in (404, 429, 500, 502, 503, 504):
@@ -744,7 +797,7 @@ guardar_memoria(
 
             status_code=503,
 
-            detail="Los dos modelos de Gemini están temporalmente indisponibles. Intenta más tarde."
+            detail="Los modelos de Gemini están temporalmente indisponibles. Intenta más tarde."
 
         )
 
