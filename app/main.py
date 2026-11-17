@@ -286,6 +286,8 @@ class SolicitudChat(BaseModel):
 
     mensaje: str = Field(..., min_length=1, max_length=10000)
 
+    usuario_id: str = Field(..., min_length=1, max_length=100)
+
     historial: list[Mensaje] = Field(default_factory=list)
 
 @app.get("/", response_class=HTMLResponse)
