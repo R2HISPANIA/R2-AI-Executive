@@ -848,8 +848,8 @@ def recuperar_memorias_estructuradas(
     finally:
 
         conexion.close()
-        
-        @app.post("/api/chat")
+
+@app.post("/api/chat")
 
 def conversar(solicitud: SolicitudChat):
 
