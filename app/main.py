@@ -1,7 +1,7 @@
 
 
 import os
-
+import base64
 
 import uuid
 
@@ -908,7 +908,51 @@ def recuperar_memorias_estructuradas(
     finally:
 
         conexion.close()
+def es_solicitud_de_imagen(mensaje: str) -> bool:
 
+    texto = mensaje.lower()
+
+    indicadores = (
+
+            indicadores = (
+
+        "genera una imagen",
+
+        "generar una imagen",
+
+        "puedes generar",
+
+        "puedes crear",
+
+        "quiero generar",
+
+        "quiero crear una imagen",
+
+        "crea una imagen",
+
+        "crear una imagen",
+
+        "haz una imagen",
+
+        "dibuja",
+
+        "ilustra",
+
+        "crea una ilustración",
+
+        "genera una ilustración",
+
+        "diseña una imagen"
+
+    )
+
+    return any(
+
+        indicador in texto
+
+        for indicador in indicadores
+
+    )
 @app.post("/api/chat")
 
 def conversar(solicitud: SolicitudChat):
