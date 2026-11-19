@@ -1,6 +1,6 @@
 
 
-from datetime import datetime, timezone
+from datetime import datetime
 
 from app.creative.memory import obtener_conexion
 
@@ -26,7 +26,9 @@ def inicializar_sesiones():
 
                     expires_at TIMESTAMPTZ NOT NULL,
 
-                    revoked_at TIMESTAMPTZ
+                    revoked_at TIMESTAMPTZ,
+
+                    CHECK (expires_at > created_at)
 
                 );
 
@@ -62,13 +64,29 @@ def registrar_sesion(
 
     """Registra una nueva sesión administrativa."""
 
-    if not session_id or not username:
+    if not isinstance(session_id, str) or not session_id.strip():
 
-        raise ValueError("Identificador y usuario son obligatorios.")
+        raise ValueError("Identificador de sesión no válido.")
 
-    if created_at.tzinfo is None or expires_at.tzinfo is None:
+    if not isinstance(username, str) or not username.strip():
 
-        raise ValueError("Las fechas deben incluir zona horaria.")
+        raise ValueError("Usuario no válido.")
+
+    if not isinstance(created_at, datetime):
+
+        raise ValueError("Fecha de creación no válida.")
+
+    if not isinstance(expires_at, datetime):
+
+        raise ValueError("Fecha de caducidad no válida.")
+
+    if created_at.tzinfo is None or created_at.utcoffset() is None:
+
+        raise ValueError("La fecha de creación debe incluir zona horaria.")
+
+    if expires_at.tzinfo is None or expires_at.utcoffset() is None:
+
+        raise ValueError("La fecha de caducidad debe incluir zona horaria.")
 
     if expires_at <= created_at:
 
@@ -100,9 +118,9 @@ def registrar_sesion(
 
             """, (
 
-                session_id,
+                session_id.strip(),
 
-                username,
+                username.strip(),
 
                 created_at,
 
@@ -120,15 +138,17 @@ def registrar_sesion(
 
         conexion.close()
 
-def comprobar_sesion(
-
-    session_id: str,
-
-    username: str,
-
-):
+def comprobar_sesion(session_id: str, username: str):
 
     """Comprueba que una sesión esté vigente y no revocada."""
+
+    if not isinstance(session_id, str) or not session_id.strip():
+
+        return False
+
+    if not isinstance(username, str) or not username.strip():
+
+        return False
 
     conexion = obtener_conexion()
 
@@ -138,7 +158,7 @@ def comprobar_sesion(
 
             cursor.execute("""
 
-                SELECT session_id
+                SELECT 1
 
                 FROM admin_sessions
 
@@ -152,7 +172,7 @@ def comprobar_sesion(
 
                 LIMIT 1;
 
-            """, (session_id, username))
+            """, (session_id.strip(), username.strip()))
 
             return cursor.fetchone() is not None
 
@@ -163,6 +183,14 @@ def comprobar_sesion(
 def revocar_sesion(session_id: str, username: str):
 
     """Revoca una sesión administrativa."""
+
+    if not isinstance(session_id, str) or not session_id.strip():
+
+        return False
+
+    if not isinstance(username, str) or not username.strip():
+
+        return False
 
     conexion = obtener_conexion()
 
@@ -182,9 +210,11 @@ def revocar_sesion(session_id: str, username: str):
 
                   AND revoked_at IS NULL
 
+                  AND expires_at > NOW()
+
                 RETURNING session_id;
 
-            """, (session_id, username))
+            """, (session_id.strip(), username.strip()))
 
             revocada = cursor.fetchone() is not None
 
@@ -196,9 +226,19 @@ def revocar_sesion(session_id: str, username: str):
 
         conexion.close()
 
-def listar_sesiones(username: str):
+def listar_sesiones(username: str, limite: int = 50):
 
-    """Consulta las sesiones de un administrador."""
+    """Consulta un número limitado de sesiones de un administrador."""
+
+    if not isinstance(username, str) or not username.strip():
+
+        raise ValueError("Usuario no válido.")
+
+    if not isinstance(limite, int) or isinstance(limite, bool):
+
+        raise ValueError("El límite debe ser un número entero.")
+
+    limite = max(1, min(limite, 200))
 
     conexion = obtener_conexion()
 
@@ -224,9 +264,11 @@ def listar_sesiones(username: str):
 
                 WHERE username = %s
 
-                ORDER BY created_at DESC;
+                ORDER BY created_at DESC
 
-            """, (username,))
+                LIMIT %s;
+
+            """, (username.strip(), limite))
 
             return cursor.fetchall()
 
