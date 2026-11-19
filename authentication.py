@@ -1,3 +1,5 @@
+
+
 import os
 
 import json
@@ -11,6 +13,16 @@ import base64
 import secrets
 
 import hashlib
+
+from app.authentication_db import (
+
+    registrar_sesion,
+
+    comprobar_sesion,
+
+    revocar_sesion,
+
+)
 
 ITERACIONES = 600_000
 
@@ -154,9 +166,15 @@ def autenticar_administrador(
 
 def crear_token_sesion(usuario: str) -> str:
 
-    """Crea una sesión firmada con caducidad."""
+    """Crea una sesión firmada y la registra en PostgreSQL."""
+
+    usuario_configurado = os.getenv("R2_ADMIN_USERNAME")
 
     secreto = os.getenv("R2_SESSION_SECRET")
+
+    if not usuario_configurado or usuario != usuario_configurado:
+
+        raise ValueError("Administrador no válido.")
 
     if not secreto or len(secreto) < 32:
 
@@ -168,6 +186,8 @@ def crear_token_sesion(usuario: str) -> str:
 
     ahora = int(time.time())
 
+    nonce = secrets.token_urlsafe(32)
+
     datos = {
 
         "usuario": usuario,
@@ -176,7 +196,7 @@ def crear_token_sesion(usuario: str) -> str:
 
         "expira": ahora + DURACION_SESION,
 
-        "nonce": secrets.token_urlsafe(16),
+        "nonce": nonce,
 
     }
 
@@ -196,11 +216,43 @@ def crear_token_sesion(usuario: str) -> str:
 
     ).digest()
 
-    return contenido + "." + codificar(firma)
+    token = contenido + "." + codificar(firma)
+
+    from datetime import datetime, timezone
+
+    registrada = registrar_sesion(
+
+        session_id=nonce,
+
+        username=usuario,
+
+        created_at=datetime.fromtimestamp(
+
+            ahora, tz=timezone.utc
+
+        ),
+
+        expires_at=datetime.fromtimestamp(
+
+            ahora + DURACION_SESION, tz=timezone.utc
+
+        ),
+
+    )
+
+    if not registrada:
+
+        raise RuntimeError(
+
+            "No se pudo registrar la sesión administrativa."
+
+        )
+
+    return token
 
 def verificar_token_sesion(token: str):
 
-    """Verifica la firma y caducidad de una sesión."""
+    """Verifica firma, caducidad y existencia de la sesión en PostgreSQL."""
 
     secreto = os.getenv("R2_SESSION_SECRET")
 
@@ -210,7 +262,7 @@ def verificar_token_sesion(token: str):
 
         return None
 
-    if not usuario_configurado:
+    if not usuario_configurado or not isinstance(token, str):
 
         return None
 
@@ -246,20 +298,60 @@ def verificar_token_sesion(token: str):
 
             return None
 
-        if int(datos.get("expira", 0)) <= int(time.time()):
+        ahora = int(time.time())
+
+        creado = int(datos.get("creado", 0))
+
+        expira = int(datos.get("expira", 0))
+
+        nonce = datos.get("nonce")
+
+        if expira <= ahora:
 
             return None
 
-        if int(datos.get("creado", 0)) > int(time.time()) + 60:
+        if creado > ahora + 60:
 
             return None
 
-        if not datos.get("nonce"):
+        if expira <= creado or expira - creado > DURACION_SESION:
+
+            return None
+
+        if not isinstance(nonce, str) or not nonce:
+
+            return None
+
+        if not comprobar_sesion(nonce, usuario_configurado):
 
             return None
 
         return datos
 
-    except (ValueError, TypeError, KeyError):
+    except Exception:
 
         return None
+
+def cerrar_sesion(token: str) -> bool:
+
+    """Revoca una sesión administrativa en PostgreSQL."""
+
+    datos = verificar_token_sesion(token)
+
+    if not datos:
+
+        return False
+
+    try:
+
+        return revocar_sesion(
+
+            session_id=datos["nonce"],
+
+            username=datos["usuario"],
+
+        )
+
+    except Exception:
+
+        return False
