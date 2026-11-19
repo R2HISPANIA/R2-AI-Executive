@@ -13,9 +13,11 @@ from datetime import datetime, timezone
 from typing import Optional, Literal
 
 from fastapi import FastAPI, HTTPException
+from fastapi import Header
 
+from app.creative.visual_production import generar_imagen
 from fastapi.responses import HTMLResponse
-
+from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
 from google import genai
@@ -32,7 +34,65 @@ app = FastAPI(
 
 )
 
+@app.post("/api/creative/generar-imagen")
+
+def api_generar_imagen(
+
+    prompt: str,
+
+    relacion_aspecto: str = "1:1",
+
+    x_creative_key: str = Header(...)
+
+):
+
+    clave_correcta = os.environ.get("R2_CREATIVE_API_KEY")
+
+    if not clave_correcta or x_creative_key != clave_correcta:
+
+        raise HTTPException(
+
+            status_code=401,
+
+            detail="Acceso no autorizado a R2 Creative Studio."
+
+        )
+
+    try:
+
+        resultado = generar_imagen(
+
+            prompt=prompt,
+
+            relacion_aspecto=relacion_aspecto
+
+        )
+
+        return Response(
+
+            content=resultado["imagen"],
+
+            media_type=resultado["formato"],
+
+            headers={
+
+                "Content-Disposition": 'inline; filename="r2-creative-image"'
+
+            }
+
+        )
+
+    except Exception:
+        raise HTTPException(
+
+            status_code=502,
+
+            detail="No se pudo generar la imagen. Revisa la configuración del motor."
+
+        )
+
 def obtener_conexion():
+        
 
     database_url = os.environ.get("DATABASE_URL")
 
