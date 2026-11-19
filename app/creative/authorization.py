@@ -2,6 +2,8 @@
 
 from datetime import datetime, timezone
 
+from uuid import uuid4
+
 ACCIONES_LIBRES = [
 
     "investigar",
@@ -38,23 +40,71 @@ ACCIONES_REQUIEREN_AUTORIZACION = [
 
 ]
 
-def evaluar_autorizacion(
+def registrar_solicitud(
 
     accion: str,
 
-    autorizacion_humana: bool = False,
+    descripcion: str,
 
     presupuesto: float = 0,
-
-    presupuesto_aprobado: float = 0,
 
 ):
 
     """
 
-    Evalúa si R2 Creative Studio puede realizar una acción.
+    Registra una solicitud pendiente de aprobación humana.
 
-    Las acciones sensibles requieren autorización humana.
+    Esta función no autoriza ni ejecuta acciones.
+
+    """
+
+    accion = accion.strip().lower()
+
+    if accion not in ACCIONES_REQUIEREN_AUTORIZACION:
+
+        raise ValueError("La acción no requiere este tipo de solicitud.")
+
+    if not descripcion or not descripcion.strip():
+
+        raise ValueError("La descripción es obligatoria.")
+
+    if presupuesto < 0:
+
+        raise ValueError("El presupuesto no puede ser negativo.")
+
+    return {
+
+        "id": str(uuid4()),
+
+        "accion": accion,
+
+        "descripcion": descripcion.strip(),
+
+        "presupuesto_solicitado": presupuesto,
+
+        "estado": "pendiente_de_autorizacion",
+
+        "fecha_solicitud": datetime.now(
+
+            timezone.utc
+
+        ).isoformat(),
+
+        "autorizado_por": None,
+
+        "fecha_autorizacion": None,
+
+    }
+
+def evaluar_autorizacion(accion: str):
+
+    """
+
+    Evalúa si una acción está permitida.
+
+    Las acciones sensibles permanecen bloqueadas
+
+    hasta implementar la verificación humana real.
 
     """
 
@@ -74,37 +124,19 @@ def evaluar_autorizacion(
 
     if accion in ACCIONES_REQUIEREN_AUTORIZACION:
 
-        if not autorizacion_humana:
-
-            return {
-
-                "permitido": False,
-
-                "requiere_autorizacion": True,
-
-                "motivo": "Se necesita autorización humana.",
-
-            }
-
-        if presupuesto > presupuesto_aprobado:
-
-            return {
-
-                "permitido": False,
-
-                "requiere_autorizacion": True,
-
-                "motivo": "El presupuesto supera el importe autorizado.",
-
-            }
-
         return {
 
-            "permitido": True,
+            "permitido": False,
 
-            "requiere_autorizacion": False,
+            "requiere_autorizacion": True,
 
-            "motivo": "Autorización humana indicada y presupuesto dentro del límite.",
+            "motivo": (
+
+                "Acción bloqueada. Requiere aprobación humana "
+
+                "mediante el sistema de autorización verificable."
+
+            ),
 
         }
 
@@ -115,33 +147,5 @@ def evaluar_autorizacion(
         "requiere_autorizacion": True,
 
         "motivo": "Acción no reconocida. Requiere revisión humana.",
-
-    }
-
-def registrar_solicitud(
-
-    accion: str,
-
-    descripcion: str,
-
-    presupuesto: float = 0,
-
-):
-
-    """Prepara una solicitud pendiente de autorización humana."""
-
-    return {
-
-        "id": datetime.now(timezone.utc).isoformat(),
-
-        "accion": accion,
-
-        "descripcion": descripcion,
-
-        "presupuesto_solicitado": presupuesto,
-
-        "estado": "pendiente_de_autorizacion",
-
-        "autorizado_por": None,
 
     }
