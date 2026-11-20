@@ -1,6 +1,8 @@
 
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
+
+from decimal import Decimal
 
 from uuid import uuid4
 
@@ -10,7 +12,7 @@ from app.creative.memory import obtener_conexion
 
 def inicializar_autorizaciones():
 
-    """Crea la tabla permanente de solicitudes."""
+    """Crea la tabla permanente de solicitudes y aprobaciones."""
 
     conexion = obtener_conexion()
 
@@ -42,9 +44,21 @@ def inicializar_autorizaciones():
 
                     fecha_caducidad TIMESTAMPTZ,
 
-                    presupuesto_aprobado NUMERIC(14, 2)
+                    presupuesto_aprobado NUMERIC(14, 2),
+
+                    fecha_consumo TIMESTAMPTZ
 
                 );
+
+            """)
+
+            # Permite actualizar instalaciones que ya tenían la tabla.
+
+            cursor.execute("""
+
+                ALTER TABLE creative_authorizations
+
+                ADD COLUMN IF NOT EXISTS fecha_consumo TIMESTAMPTZ;
 
             """)
 
@@ -96,15 +110,9 @@ def crear_solicitud(
 
                 INSERT INTO creative_authorizations (
 
-                    id,
+                    id, accion, descripcion,
 
-                    accion,
-
-                    descripcion,
-
-                    presupuesto_solicitado,
-
-                    solicitante
+                    presupuesto_solicitado, solicitante
 
                 )
 
@@ -189,6 +197,166 @@ def listar_solicitudes(limite: int = 50):
             """, (limite,))
 
             return [dict(item) for item in cursor.fetchall()]
+
+    finally:
+
+        conexion.close()
+
+def aprobar_solicitud(
+
+    solicitud_id: str,
+
+    autorizado_por: str,
+
+    presupuesto_aprobado: float = 0,
+
+    duracion_minutos: int = 15,
+
+):
+
+    """Aprueba una solicitud pendiente con caducidad."""
+
+    if not autorizado_por or not autorizado_por.strip():
+
+        raise ValueError("Debe identificarse al administrador.")
+
+    if presupuesto_aprobado < 0:
+
+        raise ValueError("El presupuesto aprobado no puede ser negativo.")
+
+    if duracion_minutos < 1 or duracion_minutos > 1440:
+
+        raise ValueError("La duración debe estar entre 1 y 1440 minutos.")
+
+    conexion = obtener_conexion()
+
+    try:
+
+        with conexion.cursor(cursor_factory=RealDictCursor) as cursor:
+
+            cursor.execute("""
+
+                UPDATE creative_authorizations
+
+                SET estado = 'aprobada',
+
+                    autorizado_por = %s,
+
+                    fecha_autorizacion = NOW(),
+
+                    fecha_caducidad = NOW() + (%s * INTERVAL '1 minute'),
+
+                    presupuesto_aprobado = %s
+
+                WHERE id = %s
+
+                  AND estado = 'pendiente'
+
+                RETURNING *;
+
+            """, (
+
+                autorizado_por.strip(),
+
+                duracion_minutos,
+
+                presupuesto_aprobado,
+
+                solicitud_id,
+
+            ))
+
+            solicitud = cursor.fetchone()
+
+        conexion.commit()
+
+        return dict(solicitud) if solicitud else None
+
+    finally:
+
+        conexion.close()
+
+def rechazar_solicitud(solicitud_id: str):
+
+    """Rechaza una solicitud que todavía esté pendiente."""
+
+    conexion = obtener_conexion()
+
+    try:
+
+        with conexion.cursor(cursor_factory=RealDictCursor) as cursor:
+
+            cursor.execute("""
+
+                UPDATE creative_authorizations
+
+                SET estado = 'rechazada'
+
+                WHERE id = %s
+
+                  AND estado = 'pendiente'
+
+                RETURNING *;
+
+            """, (solicitud_id,))
+
+            solicitud = cursor.fetchone()
+
+        conexion.commit()
+
+        return dict(solicitud) if solicitud else None
+
+    finally:
+
+        conexion.close()
+
+def consumir_autorizacion(solicitud_id: str, accion: str):
+
+    """
+
+    Consume una autorización válida una sola vez.
+
+    La operación atómica impide dos consumos simultáneos.
+
+    """
+
+    conexion = obtener_conexion()
+
+    try:
+
+        with conexion.cursor(cursor_factory=RealDictCursor) as cursor:
+
+            cursor.execute("""
+
+                UPDATE creative_authorizations
+
+                SET estado = 'consumida',
+
+                    fecha_consumo = NOW()
+
+                WHERE id = %s
+
+                  AND accion = %s
+
+                  AND estado = 'aprobada'
+
+                  AND fecha_caducidad > NOW()
+
+                RETURNING *;
+
+            """, (
+
+                solicitud_id,
+
+                accion.strip().lower(),
+
+            ))
+
+            solicitud = cursor.fetchone()
+
+        conexion.commit()
+
+        return dict(solicitud) if solicitud else None
 
     finally:
 
