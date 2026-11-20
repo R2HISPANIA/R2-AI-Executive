@@ -908,13 +908,13 @@ def recuperar_memorias_estructuradas(
     finally:
 
         conexion.close()
+
+
 def es_solicitud_de_imagen(mensaje: str) -> bool:
 
     texto = mensaje.lower()
 
     indicadores = (
-
-            indicadores = (
 
         "genera una imagen",
 
@@ -942,7 +942,7 @@ def es_solicitud_de_imagen(mensaje: str) -> bool:
 
         "genera una ilustración",
 
-        "diseña una imagen"
+        "diseña una imagen",
 
     )
 
