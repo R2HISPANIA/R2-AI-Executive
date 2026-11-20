@@ -22,6 +22,8 @@ ACCIONES_LIBRES = [
 
 ACCIONES_REQUIEREN_AUTORIZACION = [
 
+    "generar_imagen",
+
     "gastar_dinero",
 
     "contratar_servicios",
@@ -84,11 +86,7 @@ def registrar_solicitud(
 
         "estado": "pendiente_de_autorizacion",
 
-        "fecha_solicitud": datetime.now(
-
-            timezone.utc
-
-        ).isoformat(),
+        "fecha_solicitud": datetime.now(timezone.utc).isoformat(),
 
         "autorizado_por": None,
 
@@ -102,9 +100,7 @@ def evaluar_autorizacion(accion: str):
 
     Evalúa si una acción está permitida.
 
-    Las acciones sensibles permanecen bloqueadas
-
-    hasta implementar la verificación humana real.
+    Las acciones sensibles requieren aprobación humana verificable.
 
     """
 
